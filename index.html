@@ -1,265 +1,110 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Open World FPS — HTML5/Three.js (Runs Everywhere)</title>
-  <style>
-    html,body { height:100%; }
-    body { margin:0; overflow:hidden; background:#0b0f1a; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans Thai", Arial, sans-serif; color:#e5e7eb; }
-    #ui { position:fixed; inset:0; pointer-events:none; }
-    .hud { position:absolute; left:12px; top:10px; font-weight:700; font-size:14px; text-shadow:0 2px 8px rgba(0,0,0,.4); }
-    .center { position:absolute; inset:0; display:grid; place-items:center; }
-    .panel { pointer-events:auto; background:linear-gradient(180deg,#0f172a,#0b1224); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:20px 22px; box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.02); max-width:520px; text-align:center; }
-    .btn { display:inline-block; pointer-events:auto; margin-top:12px; background:#111827; border:1px solid rgba(255,255,255,.1); color:#e5e7eb; padding:10px 16px; border-radius:12px; font-weight:800; letter-spacing:.4px; cursor:pointer; }
-    .btn:active { transform: translateY(1px); }
-
-    /* Mobile controls */
-    .stick { position:fixed; bottom:18px; width:120px; height:120px; border-radius:999px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); pointer-events:auto; }
-    #stickL { left:18px; }
-    #stickR { right:18px; }
-    .nub { position:absolute; left:50%; top:50%; width:56px; height:56px; transform:translate(-50%,-50%); border-radius:999px; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.2); }
-
-    @media (hover:none) and (pointer:coarse){
-      #stickL,#stickR{ display:block; }
-    }
-    @media (hover:hover) and (pointer:fine){
-      #stickL,#stickR{ display:none; }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Open World Game Prototype</title>
+<style>
+html, body { margin:0; height:100%; overflow:hidden; background:#1e1e2f; }
+body { font-family: system-ui, sans-serif; }
+#ui { position:fixed; top:10px; left:10px; color:white; font-weight:bold; z-index:10; }
+</style>
 </head>
 <body>
-  <div id="ui">
-    <div class="hud" id="hud">WASD เดิน • เมาส์หัน • Space กระโดด • Shift วิ่ง • E โต้ตอบ</div>
-    <div class="center" id="menu">
-      <div class="panel">
-        <h2 style="margin:0 0 6px">Open World FPS (WebGL)</h2>
-        <p style="margin:0 0 10px; color:#94a3b8">ต้นแบบโลกกว้างเบาๆ เล่นได้ทั้งเดสก์ท็อปและมือถือ — เหมาะสำหรับอัปขึ้น GitHub Pages</p>
-        <button class="btn" id="playBtn">คลิกเพื่อเริ่ม / Click to Play</button>
-        <div style="margin-top:8px; font-size:12px; color:#9ca3af">หากเล่นบนเดสก์ท็อป ระบบจะขอล็อกเคอร์เซอร์ (Pointer Lock)</div>
-      </div>
-    </div>
-    <!-- Mobile Sticks -->
-    <div id="stickL" class="stick"><div class="nub" id="nubL"></div></div>
-    <div id="stickR" class="stick"><div class="nub" id="nubR"></div></div>
-  </div>
+<div id="ui">WASD เดิน • Space กระโดด • E เก็บของ</div>
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+import { PointerLockControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js';
 
-  <!-- Three.js (module) -->
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    import { PointerLockControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js';
+// Renderer & Scene
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
 
-    /************ Renderer & Scene ************/
-    const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.shadowMap.enabled = true;
-    document.body.appendChild(renderer.domElement);
+// Camera & Controls
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const controls = new PointerLockControls(camera, document.body);
+document.body.addEventListener('click', ()=>controls.lock());
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b0f1a);
+// Light
+const light = new THREE.DirectionalLight(0xffffff,1);
+light.position.set(50,100,50);
+scene.add(light);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
 
-    const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 2000);
-    camera.position.set(0, 2, 0);
+// Terrain
+const planeGeo = new THREE.PlaneGeometry(200,200,50,50);
+planeGeo.rotateX(-Math.PI/2);
+const positions = planeGeo.attributes.position;
+for(let i=0;i<positions.count;i++){
+  const x = positions.getX(i);
+  const z = positions.getZ(i);
+  positions.setY(i, Math.sin(x*0.1)*2 + Math.cos(z*0.1)*2);
+}
+planeGeo.computeVertexNormals();
+const planeMat = new THREE.MeshStandardMaterial({color:0x228B22});
+const terrain = new THREE.Mesh(planeGeo, planeMat);
+terrain.receiveShadow = true;
+scene.add(terrain);
 
-    const controls = new PointerLockControls(camera, renderer.domElement);
+// Player
+const player = { pos:new THREE.Vector3(0,5,0), vel:new THREE.Vector3(), onGround:false, height:1.8 };
 
-    /************ Lights ************/
-    scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x1b2838, 0.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-    sun.position.set(100, 120, 60);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.near = 1; sun.shadow.camera.far = 400;
-    sun.shadow.camera.left = -120; sun.shadow.camera.right = 120; sun.shadow.camera.top = 120; sun.shadow.camera.bottom = -120;
-    scene.add(sun);
+// Objects to interact
+const items = new THREE.Group();
+for(let i=0;i<20;i++){
+  const cube = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({color:0xff6347}));
+  cube.position.set((Math.random()-0.5)*100,0,(Math.random()-0.5)*100);
+  cube.position.y = Math.sin(cube.position.x*0.1)*2 + Math.cos(cube.position.z*0.1)*2 + 0.5;
+  items.add(cube);
+}
+scene.add(items);
 
-    /************ World (procedural hills) ************/
-    const WORLD_SIZE = 800;   // meters
-    const TILE = 4;           // vertex spacing
-    const HALF = WORLD_SIZE/2;
+// Physics & Input
+const keys = {};
+document.addEventListener('keydown', e=>keys[e.code]=true);
+document.addEventListener('keyup', e=>keys[e.code]=false);
 
-    // Height function (fast sinus mix)
-    function hFn(x,z){
-      return 1.2*Math.sin(x*0.08) + 0.8*Math.cos(z*0.07) + 0.6*Math.sin((x+z)*0.045);
-    }
+document.addEventListener('keydown', e=>{ if(e.code==='KeyE') interact(); });
+function interact(){
+  const ray = new THREE.Raycaster(camera.position, controls.getDirection(new THREE.Vector3()));
+  const hits = ray.intersectObjects(items.children);
+  if(hits[0] && hits[0].distance < 3){ hits[0].object.visible=false; }
+}
 
-    const geo = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, WORLD_SIZE/TILE, WORLD_SIZE/TILE);
-    geo.rotateX(-Math.PI/2);
-    const pos = geo.attributes.position;
-    for(let i=0;i<pos.count;i++){
-      const x = pos.getX(i), z = pos.getZ(i);
-      const y = hFn(x, z);
-      pos.setY(i, y);
-    }
-    geo.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({ color:0x406a3d, roughness:0.95, metalness:0.0 });
-    const terrain = new THREE.Mesh(geo, mat);
-    terrain.receiveShadow = true;
-    scene.add(terrain);
+function getHeight(x,z){ return Math.sin(x*0.1)*2 + Math.cos(z*0.1)*2; }
 
-    // Few props (crates, posts) for interaction
-    const props = new THREE.Group();
-    scene.add(props);
-    const crateGeo = new THREE.BoxGeometry(1,1,1);
-    const crateMat = new THREE.MeshStandardMaterial({ color:0x8b5a2b, roughness:0.9 });
-    for(let i=0;i<30;i++){
-      const m = new THREE.Mesh(crateGeo, crateMat);
-      m.castShadow = true; m.receiveShadow = true;
-      const x = THREE.MathUtils.randFloatSpread(WORLD_SIZE-40);
-      const z = THREE.MathUtils.randFloatSpread(WORLD_SIZE-40);
-      m.position.set(x, 0, z); m.position.y = sampleHeight(x,z) + 0.5;
-      props.add(m);
-    }
+// Loop
+const clock = new THREE.Clock();
+function animate(){
+  const dt = clock.getDelta();
+  const speed = keys['ShiftLeft'] ? 10 : 5;
+  const forward = (keys['KeyW']?1:0)-(keys['KeyS']?1:0);
+  const strafe  = (keys['KeyD']?1:0)-(keys['KeyA']?1:0);
+  const dir = new THREE.Vector3();
+  controls.getDirection(dir);
+  dir.y=0; dir.normalize();
+  const right = new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)).negate();
+  player.vel.x = dir.x*forward*speed + right.x*strafe*speed;
+  player.vel.z = dir.z*forward*speed + right.z*strafe*speed;
+  player.vel.y -= 9.8*dt;
+  if(player.onGround && keys['Space']){ player.vel.y=5; }
+  player.pos.addScaledVector(player.vel, dt);
+  const groundY = getHeight(player.pos.x,player.pos.z)+player.height*0.5;
+  if(player.pos.y<=groundY){ player.pos.y=groundY; player.vel.y=0; player.onGround=true; } else player.onGround=false;
+  camera.position.copy(player.pos);
+  renderer.render(scene,camera);
+  requestAnimationFrame(animate);
+}
+animate();
 
-    // Simple sky gradient
-    const skyGeo = new THREE.SphereGeometry(1400, 32, 16);
-    const skyMat = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      uniforms: { top: { value: new THREE.Color(0x0b3c5d) }, bottom: { value: new THREE.Color(0x0b0f1a) } },
-      vertexShader:`varying vec3 vPos; void main(){ vPos=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-      fragmentShader:`varying vec3 vPos; uniform vec3 top; uniform vec3 bottom; void main(){ float h = normalize(vPos).y*0.5+0.5; gl_FragColor=vec4(mix(bottom, top, h), 1.0); }`
-    });
-    const sky = new THREE.Mesh(skyGeo, skyMat); scene.add(sky);
-
-    /************ Physics-lite (ground + gravity + step) ************/
-    const player = {
-      height: 1.8,
-      radius: 0.35,
-      pos: new THREE.Vector3(0, 3, 5),
-      vel: new THREE.Vector3(),
-      onGround: false
-    };
-
-    function sampleHeight(x,z){
-      // bilinear sample the heightfield using hFn
-      return hFn(x, z);
-    }
-
-    function resolveGround(dt){
-      const groundY = sampleHeight(player.pos.x, player.pos.z) + player.height*0.0; // capsule bottom offset (flat feet)
-      if(player.pos.y <= groundY + player.height*0.5){
-        player.pos.y = groundY + player.height*0.5;
-        player.vel.y = 0; player.onGround = true;
-      } else {
-        player.onGround = false;
-      }
-    }
-
-    /************ Input ************/
-    const key = new Set();
-    addEventListener('keydown', (e)=>{ key.add(e.code); if(e.code==='KeyE'){ interact(); } });
-    addEventListener('keyup',   (e)=> key.delete(e.code));
-
-    // Pointer lock
-    const playBtn = document.getElementById('playBtn');
-    const menu = document.getElementById('menu');
-    playBtn.addEventListener('click', ()=>{
-      if(matchMedia('(hover:hover) and (pointer:fine)').matches){
-        controls.lock();
-      } else {
-        // mobile just hide menu
-        menu.style.display='none';
-      }
-    });
-    controls.addEventListener('lock', ()=>{ menu.style.display='none'; });
-    controls.addEventListener('unlock', ()=>{ menu.style.display='grid'; });
-
-    // Mobile sticks (left: move, right: look)
-    const stickL = document.getElementById('stickL');
-    const nubL = document.getElementById('nubL');
-    const stickR = document.getElementById('stickR');
-    const nubR = document.getElementById('nubR');
-    let mv = {x:0,z:0}, look = {x:0,y:0};
-
-    function bindStick(el,nub,onMove){
-      let id=null, cx=0, cy=0;
-      const max=44;
-      const start=(e)=>{ const t=e.changedTouches?e.changedTouches[0]:e; id=t.identifier??'m'; const r=el.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; move(e); };
-      const move=(e)=>{ const t=[...(e.changedTouches||[])].find(t=> (t.identifier??'m')===id) || (e.touches?null:e); if(!t)return; const dx=t.clientX-cx, dy=t.clientY-cy; const len=Math.hypot(dx,dy); const k=len>max?max/len:1; const nx=dx*k, ny=dy*k; nub.style.transform=`translate(${-50+nx/(el.clientWidth)*100*2}%,${-50+ny/(el.clientHeight)*100*2}%)`; onMove(nx/max, ny/max); };
-      const end=()=>{ id=null; nub.style.transform='translate(-50%,-50%)'; onMove(0,0); };
-      el.addEventListener('pointerdown', start); el.addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
-    }
-    bindStick(stickL,nubL,(x,y)=>{ mv.x = x; mv.z = y; });
-    bindStick(stickR,nubR,(x,y)=>{ look.x = x; look.y = y; });
-
-    /************ Interaction (E to pick crate) ************/
-    const raycaster = new THREE.Raycaster();
-    function interact(){
-      raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-      const hits = raycaster.intersectObjects(props.children, false);
-      if(hits[0] && hits[0].distance < 3){
-        const obj = hits[0].object; obj.visible = false; // simple pickup
-      }
-    }
-
-    /************ Loop ************/
-    const clock = new THREE.Clock();
-    function tick(){
-      const dt = Math.min(clock.getDelta(), 0.033);
-
-      // Look (mobile)
-      if(!controls.isLocked && (Math.abs(look.x)>0.02 || Math.abs(look.y)>0.02)){
-        camera.rotation.y -= look.x * dt * 2.2;
-        camera.rotation.x -= look.y * dt * 1.6;
-        camera.rotation.x = THREE.MathUtils.clamp(camera.rotation.x, -Math.PI/2+0.05, Math.PI/2-0.05);
-      }
-
-      // Move
-      const dir = new THREE.Vector3();
-      const forward = (key.has('KeyW')?1:0) - (key.has('KeyS')?1:0);
-      const strafe  = (key.has('KeyD')?1:0) - (key.has('KeyA')?1:0);
-
-      const isMobile = !matchMedia('(hover:hover) and (pointer:fine)').matches;
-      const f2 = isMobile ? -mv.z : forward; // stick forward is -y
-      const s2 = isMobile ?  mv.x : strafe;
-
-      const speed = (key.has('ShiftLeft')||key.has('ShiftRight') ? 9 : 5);
-
-      if(controls.isLocked){
-        controls.getDirection(dir);
-        dir.y = 0; dir.normalize();
-        const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0,1,0)).negate();
-        player.vel.x = dir.x * f2 * speed + right.x * s2 * speed;
-        player.vel.z = dir.z * f2 * speed + right.z * s2 * speed;
-      } else {
-        // when not locked, move relative to camera yaw
-        const yaw = camera.rotation.y;
-        const f = new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
-        const r = new THREE.Vector3(f.z,0,-f.x);
-        player.vel.x = f.x * f2 * speed + r.x * s2 * speed;
-        player.vel.z = f.z * f2 * speed + r.z * s2 * speed;
-      }
-
-      // Gravity + jump
-      player.vel.y += -18 * dt;
-      if((key.has('Space') || (isMobile && Math.hypot(mv.x,mv.z)>0.6 && player.onGround)) && player.onGround){
-        player.vel.y = 7.4; // jump
-      }
-
-      // Integrate
-      player.pos.addScaledVector(player.vel, dt);
-      resolveGround(dt);
-
-      // Apply camera position
-      camera.position.copy(player.pos).setY(player.pos.y + player.height*0.5);
-
-      // Rotate camera by mouse when locked (PointerLock handles internally)
-
-      renderer.render(scene, camera);
-      requestAnimationFrame(tick);
-    }
-
-    /************ Window ************/
-    addEventListener('resize', ()=>{
-      camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight);
-    });
-
-    // Place player on terrain height
-    player.pos.y = sampleHeight(player.pos.x, player.pos.z) + player.height*0.5 + 0.05;
-
-    tick();
-  </script>
+window.addEventListener('resize', ()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+</script>
 </body>
 </html>
